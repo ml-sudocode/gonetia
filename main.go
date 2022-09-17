@@ -233,23 +233,42 @@ func writeResults(parent string, strategy string, results []string) error {
 	fmt.Sprintf("Writing output for %s ...\n", strategy)
 
 	pbytes := strings.Join(results, "\n")
-	ioutil.WriteFile(fmt.Sprintf("./%s/%s_planets.txt", parent, strategy), []byte(pbytes), 0755)
+	err := ioutil.WriteFile(fmt.Sprintf("./output/%s/%s_planets.txt", parent, strategy), []byte(pbytes), 0755)
+
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	return nil
 }
 
 func main() {
-	// prompt for parent
-	parentPrompt := promptui.Prompt{
-		Label:    "Which star? (e.g., ~marzod)",
-		Validate: validate,
+	var parent string
+
+	// get input from args...
+	argLength := len(os.Args[1:])
+	if argLength > 0 {
+		arg := os.Args[1]
+		aErr := validate(arg)
+		if aErr == nil {
+			parent = arg
+		}
 	}
 
-	parent, err := parentPrompt.Run()
+	// ... or prompt for parent
+	if parent == "" {
+		parentPrompt := promptui.Prompt{
+			Label:    "Which star? (e.g., ~marzod)",
+			Validate: validate,
+		}
 
-	if err != nil {
-		fmt.Printf("bad input: %v\n", err)
-		return
+		var pErr error
+		parent, pErr = parentPrompt.Run()
+
+		if pErr != nil {
+			fmt.Printf("bad input: %v\n", pErr)
+			return
+		}
 	}
 
 	// find planets
@@ -263,8 +282,15 @@ func main() {
 	doublesPlanets := filterPlanets(planets, Doubles)
 
 	// write output
+	_, oErr := os.Stat("output")
+	if os.IsNotExist(oErr) {
+		os.Mkdir("./output", 0755)
+	}
 	deSiggedParent := strings.Replace(parent, "~", "", 1)
-	os.Mkdir(fmt.Sprintf("./%s", deSiggedParent), 0755)
+	e := os.Mkdir(fmt.Sprintf("./output/%s", deSiggedParent), 0755)
+	if e != nil {
+		fmt.Println(e)
+	}
 
 	writeResults(deSiggedParent, "any_approx", anyApproxPlanets)
 	writeResults(deSiggedParent, "only_approx", onlyApproxPlanets)
